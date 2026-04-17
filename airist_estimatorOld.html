@@ -496,7 +496,7 @@
         </div>
         <div class="form-group full">
           <label>FURNACE / AIR HANDLER LOCATION</label>
-          <select id="ahLocation" onchange="syncSummary();renderTierCards();">
+          <select id="ahLocation" onchange="syncSummary()">
             <option value="">Select location…</option>
             <option value="Attic">Attic</option>
             <option value="Garage">Garage</option>
@@ -615,28 +615,29 @@
       </div>
       <div class="form-grid">
         <div class="form-group">
-          <label>SCOPE OF WORK</label>
-          <select id="scopeWork" onchange="syncSummary();renderTierCards();">
-            <option value="Full System Replacement">Full System Replacement</option>
-            <option value="New System Installation">New System Installation</option>
-            <option value="Furnace Replacement">Furnace Replacement</option>
-            <option value="Air Handler Replacement">Air Handler Replacement</option>
-            <option value="Condenser Replacement">Condenser Replacement</option>
-            <option value="Heat Pump Replacement">Heat Pump Replacement</option>
-            <option value="Evaporator Coil Replacement">Evaporator Coil Replacement</option>
-            <option value="AC Addition Only">AC Addition Only</option>
-            <option value="AC Addition + Furnace Replacement">AC Addition + Furnace Replacement</option>
-            <option value="Other Installation">Other Installation</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>DESIRED SYSTEM TYPE</label>
-          <select id="systemType" onchange="syncScopeOptions();syncSummary();renderTierCards();">
+          <label>SYSTEM TYPE</label>
+          <select id="systemType" onchange="syncSummary()">
             <option value="Split System AC + Furnace">Split System AC + Furnace</option>
             <option value="Split System Heat Pump + Air Handler">Split System Heat Pump + Air Handler</option>
             <option value="Packaged Unit">Packaged Unit</option>
             <option value="Mini Split">Mini Split</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>REFRIGERANT</label>
+          <select id="refrigerant" onchange="syncSummary()">
+            <option value="R-454B (Puron Advance)">R-454B (Puron Advance)</option>
+            <option value="R-410A (Puron)">R-410A (Puron)</option>
+            <option value="Per Manufacturer">Per Manufacturer</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>SCOPE OF WORK</label>
+          <select id="scopeWork" onchange="syncSummary()">
+            <option value="Full System Replacement">Full System Replacement</option>
+            <option value="Condenser Only">Condenser Only</option>
+            <option value="Air Handler / Furnace Only">Air Handler / Furnace Only</option>
+            <option value="New Installation">New Installation</option>
           </select>
         </div>
       </div>
@@ -656,7 +657,7 @@
             <input type="checkbox" id="chk-ducting" class="addon-chk" onchange="calcAddons()">
           </div>
           <div class="addon-info">
-            <div class="addon-name">Install New Ducting</div>
+            <div class="addon-name">Replace ducting system</div>
             <div class="addon-desc">Full ductwork replacement with new insulated flex or hard duct</div>
           </div>
           <div class="addon-price">$3,000</div>
@@ -795,17 +796,6 @@
           <div class="addon-price">$99</div>
         </div>
 
-        <div class="addon-row" id="addon-heatpumpupgrade">
-          <div class="addon-check-wrap">
-            <input type="checkbox" id="chk-heatpumpupgrade" class="addon-chk" onchange="calcAddons()">
-          </div>
-          <div class="addon-info">
-            <div class="addon-name">Upgrade to heat pump / air handler</div>
-            <div class="addon-desc">Upgrade existing system to a heat pump and air handler configuration</div>
-          </div>
-          <div class="addon-price">$600</div>
-        </div>
-
       </div>
 
       <!-- Add-on total -->
@@ -866,12 +856,12 @@
     <!-- Tier selection -->
     <div class="card">
       <div class="card-title"><div class="card-title-icon">💰</div>Select Equipment Tier</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Tap a tier to select it, then print the estimate for your customer. Some brands may not be available based on scope.</div>
-
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Tap a tier to select it, then print the estimate for your customer.</div>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;" id="tierGrid">
         <!-- populated by JS -->
       </div>
     </div>
+
 
     <!-- Discount -->
     <div class="card" id="discountCard" style="display:none;">
@@ -910,7 +900,7 @@
 
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goTo(4)">← Back</button>
-      <button class="btn btn-print" id="printBtn" onclick="downloadPDF()">⬇ Download PDF</button>
+      <button class="btn btn-print" id="printBtn" style="display:none;" onclick="downloadPDF()">⬇ Download PDF</button>
       <button class="btn btn-primary" onclick="newEstimate()">+ New Estimate</button>
     </div>
   </div>
@@ -926,35 +916,8 @@ let state = {
   overrideActive: false,
   selectedBrand: null,
   zone: null,
-  selectedFurnace: null,
 };
-let discountAmount = 0;
-let seerSelections = {};
-
-// ─── Furnace Catalog ──────────────────────────────────
-const FURNACES = [
-  // ACPro 80% AFUE
-  { id: 'f01', brand: 'ACPro', model: '80G1UH040AE12XK', afue: '80%', btu: '40,000', price: 1298 },
-  { id: 'f02', brand: 'ACPro', model: '80G1UH060AE12X',  afue: '80%', btu: '60,000', price: 1288 },
-  { id: 'f03', brand: 'ACPro', model: 'FG8SA-070UT24BP', afue: '80%', btu: '70,000', price: 1472 },
-  { id: 'f04', brand: 'ACPro', model: 'A80US2V080B16X',  afue: '80%', btu: '80,000', price: 2413 },
-  { id: 'f05', brand: 'ACPro', model: '80G1UH080BE16XK', afue: '80%', btu: '80,000', price: 1379 },
-  { id: 'f06', brand: 'ACPro', model: '80G1UH100CE20X',  afue: '80%', btu: '100,000', price: 1409 },
-  // ACPro 95% AFUE
-  { id: 'f07', brand: 'ACPro', model: '95G1UH040BE12X',  afue: '95%', btu: '40,000', price: 2030 },
-  { id: 'f08', brand: 'ACPro', model: '95G1UH060BE12X',  afue: '95%', btu: '60,000', price: 2097 },
-  { id: 'f09', brand: 'ACPro', model: 'FG8SD100UT35CP',  afue: '95%', btu: '100,000', price: 2245 },
-  // ACPro 97% AFUE
-  { id: 'f10', brand: 'ACPro', model: 'A97US2V040B12X',  afue: '97%', btu: '40,000', price: 2949 },
-  { id: 'f11', brand: 'ACPro', model: 'A97US2V080C20X',  afue: '97%', btu: '80,000', price: 3291 },
-  // Goodman 96% AFUE
-  { id: 'f13', brand: 'Goodman', model: 'GR9S800603AU',  afue: '96%', btu: '80,000', price: 1189 },
-  { id: 'f14', brand: 'Goodman', model: 'GR9S800604BU',  afue: '96%', btu: '80,000', price: 1221 },
-  { id: 'f15', brand: 'Goodman', model: 'GRVS800604BU',  afue: '96%', btu: '80,000', price: 1474, note: 'Variable Speed' },
-  { id: 'f16', brand: 'Goodman', model: 'GR9S800805CU',  afue: '96%', btu: '80,000', price: 1396 },
-  // Rheem
-  { id: 'f12', brand: 'Rheem',   model: 'R801T0503A14UHN', afue: '80%', btu: '50,000', price: 1090 },
-];
+let discountAmount = 0; // final dollar discount applied
 
 const SIZES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
 
@@ -1198,7 +1161,7 @@ function updateOverrideAlert() {
 
 // ─── Add-ons ─────────────────────────────────────────
 const ADDONS = [
-  { id: 'ducting',    label: 'Install New Ducting',         price: 3000 },
+  { id: 'ducting',    label: 'Replace ducting system',   price: 3000 },
   { id: 'registers',  label: 'Replace all registers',     price: 600  },
   { id: 'disconnect', label: 'Replace disconnect box',    price: 200  },
   { id: 'surge',      label: 'Install surge protector',   price: 500  },
@@ -1211,7 +1174,6 @@ const ADDONS = [
   { id: 'gasline',          label: 'Gas line modification',      price: 99   },
   { id: 'condline',         label: 'Condensation line modification', price: 99 },
   { id: 'exhaust',          label: 'Exhaust pipe modification',  price: 99   },
-  { id: 'heatpumpupgrade',  label: 'Upgrade to heat pump / air handler', price: 600 },
 ];
 
 function calcAddons() {
@@ -1235,90 +1197,8 @@ document.querySelectorAll('.addon-row').forEach(row => {
   });
 });
 
-// ─── Auto add-ons based on scope ─────────────────────
-// ─── Scope options per system type ───────────────────
-const SCOPE_OPTIONS = {
-  'Split System AC + Furnace': [
-    'Full System Replacement',
-    'New System Installation',
-    'Furnace Replacement',
-    'Condenser Replacement',
-    'Evaporator Coil Replacement',
-    'AC Addition Only',
-    'AC Addition + Furnace Replacement',
-    'Other Installation',
-  ],
-  'Split System Heat Pump + Air Handler': [
-    'Full System Replacement',
-    'New System Installation',
-    'Air Handler Replacement',
-    'Heat Pump Replacement',
-    'Evaporator Coil Replacement',
-    'Other Installation',
-  ],
-  default: [
-    'Full System Replacement',
-    'New System Installation',
-    'Furnace Replacement',
-    'Air Handler Replacement',
-    'Condenser Replacement',
-    'Heat Pump Replacement',
-    'Evaporator Coil Replacement',
-    'AC Addition Only',
-    'AC Addition + Furnace Replacement',
-    'Other Installation',
-  ]
-};
-
-function syncScopeOptions() {
-  const systemType = document.getElementById('systemType').value || '';
-  const sel = document.getElementById('scopeWork');
-  const current = sel.value;
-  const allowed = SCOPE_OPTIONS[systemType] || SCOPE_OPTIONS.default;
-  sel.innerHTML = allowed.map(v =>
-    `<option value="${v}"${v === current ? ' selected' : ''}>${v}</option>`
-  ).join('');
-  if (!allowed.includes(current)) sel.value = allowed[0];
-  resetSeerSelectionsForSystemType();
-}
-
-// ─── Furnace picker ───────────────────────────────────
-function renderFurnacePicker() {
-  // Furnace dropdowns are now embedded inside each tier card — see renderTierCards
-  const isACF = document.getElementById('systemType').value === 'Split System AC + Furnace';
-  if (!isACF) state.selectedFurnace = null;
-}
-
-function selectFurnace(id) {
-  state.selectedFurnace = id ? (FURNACES.find(f => f.id === id) || null) : null;
-  renderTierCards();
-  if (selectedTier) renderPrintEstimate();
-}
-
-function getFurnaceCost() {
-  return state.selectedFurnace ? equipCost(state.selectedFurnace.price) : 0;
-}
-
-function syncScopeAddons() {
-  const scope = document.getElementById('scopeWork').value || '';
-  const ductChk = document.getElementById('chk-ducting');
-  const ductRow = document.getElementById('addon-ducting');
-  if (scope === 'New System Installation') {
-    ductChk.checked = true;
-    ductRow.classList.add('checked');
-    ductRow.style.opacity = '0.7';
-    ductRow.style.pointerEvents = 'none';
-    ductRow.title = 'Automatically included for New System Installation';
-  } else {
-    ductRow.style.opacity = '';
-    ductRow.style.pointerEvents = '';
-    ductRow.title = '';
-  }
-  calcAddons();
-}
-
 // ─── Summary sync ────────────────────────────────────
-function syncSummary() { syncScopeAddons(); renderFurnacePicker(); }
+function syncSummary() {}
 
 // ─── Equipment Tier Pricing ───────────────────────────
 // Base prices per size (tons) per brand, San Diego market
@@ -1337,305 +1217,38 @@ function buildPrices(base2ton) {
   };
 }
 
-// Scopes where each brand is NOT available
-const BRAND_EXCLUSIONS = {
-  ACPro:   [],
-  Goodman: [],
-  Rheem:   [],
-  // Bosch: no gas furnaces, no condensers — only heat pumps + air handlers
-  Bosch: ['Condenser Replacement'],
-};
-
-// System types that require a gas furnace — Bosch does not make furnaces
-const FURNACE_SYSTEM_TYPES = ['Split System AC + Furnace'];
-
-function getEquipTypeFilter() {
-  const systemType = document.getElementById('systemType').value || '';
-  if (systemType === 'Split System AC + Furnace') return 'cond';
-  if (systemType === 'Split System Heat Pump + Air Handler') return 'hp';
-  return null; // no filter — show all
-}
-
-function getValidSeerTiers(t) {
-  const filter = getEquipTypeFilter();
-  if (!t.seerTiers) return null;
-  return filter ? t.seerTiers.filter(st => st.equipType === filter) : t.seerTiers;
-}
-
-// Returns the correct active seer tier index (into t.seerTiers) respecting the current filter
-function getActiveSeerIdx(t) {
-  const curIdx = seerSelections[t.brand] || 0;
-  const filter = getEquipTypeFilter();
-  if (!filter) return curIdx;
-  const curTier = t.seerTiers[curIdx];
-  if (curTier && curTier.equipType === filter) return curIdx;
-  // Current selection filtered out — return first valid tier's index
-  const firstValid = t.seerTiers.find(st => st.equipType === filter);
-  return firstValid ? t.seerTiers.indexOf(firstValid) : curIdx;
-}
-
-// Reset all seer selections to first valid tier for the current system type
-function resetSeerSelectionsForSystemType() {
-  for (const key of ['ACPro', 'Goodman', 'Rheem', 'Bosch']) {
-    const t = TIER_PRICING[key];
-    if (!t || !t.seerTiers) continue;
-    seerSelections[key] = getActiveSeerIdx(t);
-  }
-}
-
-function isBrandAvailable(brand) {
-  const scope = document.getElementById('scopeWork').value || '';
-  const systemType = document.getElementById('systemType').value || '';
-  if (brand === 'Bosch' && FURNACE_SYSTEM_TYPES.includes(systemType)) return false;
-  if (BRAND_EXCLUSIONS[brand].includes(scope)) return false;
-  const t = TIER_PRICING[brand];
-  if (t.seerTiers) {
-    const valid = getValidSeerTiers(t);
-    if (valid.length === 0) return false;
-  }
-  return true;
-}
-
 const TIER_PRICING = {
   ACPro: {
     brand: 'ACPro', tier: 'Super Economy', cls: 'tier-economy',
     badge: '#E2E8F0', badgeTxt: '#64748B', totalClr: '#64748B',
     desc: 'Reliable performance at the lowest cost',
     perks: ['Entry-level efficiency', '10-yr mfr parts warranty', 'Great for rentals & flips'],
-    // Furnace options (80% AFUE, for AC+Furnace scope reference)
-    furnacePrices: { 1: 1288, 1.5: 1288, 2: 1288, 2.5: 1472, 3: 2413, 3.5: 2413, 4: 1409, 5: 1409 },
-    // AH pairings used: 1.5T=AIRH-M-1018108B($635) | 2T=AIRH-M-1024108B($715) |
-    //   2.5T=AIRH-B-36ME2BB($1,050, 3T AH — no 2.5T listed) | 3T=AIRH-M-1036E12B($996) |
-    //   3.5T=AIRH-M-1048E16B($1,201, 4T AH — no 3.5T listed) | 4T=AIRH-M-1048E16B($1,201) |
-    //   5T=AIRH-M-1060E20B($1,215)
-    seerTiers: [
-      {
-        label: '14.3 SEER2 Cond', equipType: 'cond',
-        // Condenser + AH combined (used for HP+AH or unspecified system types)
-        prices: { 1: 0, 1.5: 1615, 2: 1760, 2.5: 2218, 3: 2266, 3.5: 2665, 4: 2742, 5: 2880 },
-        // Condenser-only (used for AC+Furnace — indoor unit is a furnace, not AH)
-        condOnlyPrices: { 1: 0, 1.5: 980, 2: 1045, 2.5: 1168, 3: 1270, 3.5: 1464, 4: 1541, 5: 1665 },
-        models: {
-          1.5: { cond: 'SPAC-M-1018BB', ah: 'AIRH-M-1018108B', seer: '14.3 SEER2', ref: 'R-454B' },
-          2:   { cond: 'SPAC-M-1024BB', ah: 'AIRH-M-1024108B', seer: '14.3 SEER2', ref: 'R-454B' },
-          2.5: { cond: 'SPAC-M-1030BB', ah: 'AIRH-B-36ME2BB',  seer: '14.3 SEER2', ref: 'R-454B' },
-          3:   { cond: 'SPAC-M-1036BB', ah: 'AIRH-M-1036E12B', seer: '14.3 SEER2', ref: 'R-454B' },
-          3.5: { cond: 'SPAC-M-1042BB', ah: 'AIRH-M-1048E16B', seer: '14.3 SEER2', ref: 'R-454B' },
-          4:   { cond: 'SPAC-M-1048BB', ah: 'AIRH-M-1048E16B', seer: '14.3 SEER2', ref: 'R-454B' },
-          5:   { cond: 'SPAC-M-1060BB', ah: 'AIRH-M-1060E20B', seer: '13.8 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '15.2 SEER2 HP', equipType: 'hp',
-        prices: { 1: 0, 1.5: 1983, 2: 2099, 2.5: 2479, 3: 2594, 3.5: 2951, 4: 3008, 5: 3230 },
-        models: {
-          1.5: { hp: 'SPHP-M-1018BB', ah: 'AIRH-M-1018108B', seer: '15.2 SEER2', ref: 'R-454B' },
-          2:   { hp: 'SPHP-M-1024BB', ah: 'AIRH-M-1024108B', seer: '15.2 SEER2', ref: 'R-454B' },
-          2.5: { hp: 'SPHP-M-1030BB', ah: 'AIRH-B-36ME2BB',  seer: '15.2 SEER2', ref: 'R-454B' },
-          3:   { hp: 'SPHP-M-1036BB', ah: 'AIRH-M-1036E12B', seer: '15.2 SEER2', ref: 'R-454B' },
-          3.5: { hp: 'SPHP-M-1042BB', ah: 'AIRH-M-1048E16B', seer: '15.2 SEER2', ref: 'R-454B' },
-          4:   { hp: 'SPHP-M-1048BB', ah: 'AIRH-M-1048E16B', seer: '15.2 SEER2', ref: 'R-454B' },
-          5:   { hp: 'SPHP-M-1060BB', ah: 'AIRH-M-1060E20B', seer: '15.2 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '17.5–20 SEER2 Slim HP', equipType: 'hp',
-        // SPHP-B-36VBB (20 SEER2) covers 2–3T | SPHP-B-60VBB (17.5 SEER2) covers 4T |
-        // SPHP-XB-I060BC (20 SEER2) covers 5T | no 1T, 1.5T, or 3.5T model in this tier
-        prices: { 1: 0, 1.5: 0, 2: 2127, 2.5: 2462, 3: 2408, 3.5: 0, 4: 3043, 5: 3706 },
-        models: {
-          2:   { hp: 'SPHP-B-36VBB',   ah: 'AIRH-M-1024108B', seer: '20 SEER2',   ref: 'R-454B' },
-          2.5: { hp: 'SPHP-B-36VBB',   ah: 'AIRH-B-36ME2BB',  seer: '20 SEER2',   ref: 'R-454B' },
-          3:   { hp: 'SPHP-B-36VBB',   ah: 'AIRH-M-1036E12B', seer: '20 SEER2',   ref: 'R-454B' },
-          4:   { hp: 'SPHP-B-60VBB',   ah: 'AIRH-M-1048E16B', seer: '17.5 SEER2', ref: 'R-454B' },
-          5:   { hp: 'SPHP-XB-I060BC', ah: 'AIRH-M-1060E20B', seer: '20 SEER2',   ref: 'R32'    },
-        }
-      },
-    ],
-    get prices() { const tier = this.seerTiers[getActiveSeerIdx(this)]; const isACF = typeof document !== 'undefined' && document.getElementById('systemType')?.value === 'Split System AC + Furnace'; return (isACF && tier.condOnlyPrices) ? tier.condOnlyPrices : tier.prices; },
-    get models() { return this.seerTiers[getActiveSeerIdx(this)].models; }
+    prices: buildPrices(6900)
   },
   Goodman: {
     brand: 'Goodman', tier: 'Budget', cls: 'tier-budget',
     badge: '#DCFCE7', badgeTxt: '#16A34A', totalClr: '#16A34A',
     desc: 'Trusted American brand with solid warranties',
     perks: ['Made in the USA', '10-yr mfr parts warranty', 'Great homeowner value'],
-    furnacePrices: { 3: 1189, 4: 1221, 5: 1396 },
-    seerTiers: [
-      {
-        label: '14.3 SEER2', equipType: 'cond',
-        prices: { 1: 0, 1.5: 1112, 2: 2142, 2.5: 2232, 3: 2475, 3.5: 2697, 4: 2860, 5: 3252 },
-        models: {
-          1.5: { cond: 'GLXS4BA1810', ah: 'n/a',          seer: '14.3 SEER2', ref: 'R32' },
-          2:   { cond: 'GLXS4BA2410', ah: 'AMST24BU1300', seer: '14.3 SEER2', ref: 'R32' },
-          2.5: { cond: 'GLXS4BA3010', ah: 'AMST30BU1300', seer: '14.3 SEER2', ref: 'R32' },
-          3:   { cond: 'GLXS4BA3610', ah: 'AMST36CU1300', seer: '14.3 SEER2', ref: 'R32' },
-          3.5: { cond: 'GLXS4BA4210', ah: 'AMST42CU1300', seer: '14.3 SEER2', ref: 'R32' },
-          4:   { cond: 'GLXS4BA4810', ah: 'AMST48CU1300', seer: '14.3 SEER2', ref: 'R32' },
-          5:   { cond: 'GLXS4BA6010', ah: 'AMST60DU1300', seer: '14.3 SEER2', ref: 'R32' },
-        }
-      },
-      {
-        label: '15.2 SEER2', equipType: 'cond',
-        prices: { 1: 0, 1.5: 1338, 2: 2383, 2.5: 2486, 3: 2759, 3.5: 3019, 4: 0, 5: 3651 },
-        models: {
-          1.5: { cond: 'GLXS5BA1810', ah: 'n/a',          seer: '15.2 SEER2', ref: 'R32' },
-          2:   { cond: 'GLXS5BA2410', ah: 'AMST24BU1300', seer: '15.2 SEER2', ref: 'R32' },
-          2.5: { cond: 'GLXS5BA3010', ah: 'AMST30BU1300', seer: '15.2 SEER2', ref: 'R32' },
-          3:   { cond: 'GLXS5BA3610', ah: 'AMST36CU1300', seer: '15.2 SEER2', ref: 'R32' },
-          3.5: { cond: 'GLXS5BA4210', ah: 'AMST42CU1300', seer: '15.2 SEER2', ref: 'R32' },
-          5:   { cond: 'GLXS5BA6010', ah: 'AMST60DU1300', seer: '15.2 SEER2', ref: 'R32' },
-        }
-      },
-      {
-        label: '17.2 SEER2', equipType: 'cond',
-        prices: { 1: 0, 1.5: 0, 2: 3036, 2.5: 0, 3: 3429, 3.5: 0, 4: 4035, 5: 4527 },
-        models: {
-          2:   { cond: 'GLXT7CA2410', ah: 'AHVE24BP1300', seer: '17.2 SEER2', ref: 'R32' },
-          3:   { cond: 'GLXT7CA3610', ah: 'AMVT36CP1300', seer: '17.2 SEER2', ref: 'R32' },
-          4:   { cond: 'GLXT7CA4810', ah: 'AHVE48DP0300', seer: '17.2 SEER2', ref: 'R32' },
-          5:   { cond: 'GLXT7CA6010', ah: 'AMVT60DP1300', seer: '17.2 SEER2', ref: 'R32' },
-        }
-      },
-      {
-        label: '19.2 SEER2 Slim', equipType: 'cond',
-        prices: { 1: 0, 1.5: 0, 2: 0, 2.5: 0, 3: 4592, 3.5: 0, 4: 5050, 5: 5425 },
-        models: {
-          3:   { cond: 'GXV9SA3610',  ah: 'AMVT36CP1300', seer: '19.2 SEER2', ref: 'R32' },
-          4:   { cond: 'GXV9SA4810',  ah: 'AHVE48DP0300', seer: '19.2 SEER2', ref: 'R32' },
-          5:   { cond: 'GXV9SA6010',  ah: 'AMVT60DP1300', seer: '19.2 SEER2', ref: 'R32' },
-        }
-      }
-    ],
-    get prices() { const tier = this.seerTiers[getActiveSeerIdx(this)]; const isACF = typeof document !== 'undefined' && document.getElementById('systemType')?.value === 'Split System AC + Furnace'; return (isACF && tier.condOnlyPrices) ? tier.condOnlyPrices : tier.prices; },
-    get models() { return this.seerTiers[getActiveSeerIdx(this)].models; }
+    prices: buildPrices(7800)
   },
   Rheem: {
     brand: 'Rheem', tier: 'Mid-Tier', cls: 'tier-mid',
     badge: '#EEF2FF', badgeTxt: '#4338CA', totalClr: '#5048BC',
     desc: 'Higher efficiency & quieter operation',
     perks: ['High SEER2 ratings', '10-yr mfr parts warranty', 'Smart-home ready'],
-    // Furnace (gas, ~80k BTU / up to 3T systems): R801T0503A14UHN = $1,089.70
-    furnacePrices: { 3: 1090 },
-    // Air Handler prices (for HP systems): 2T=RH2TY2417STANNA $1,537 | 4T=RH2TY4821STANNA $2,048
-    seerTiers: [
-      {
-        label: '14.3 SEER2 Cond', equipType: 'cond',
-        // Condenser only — pairs with furnace for AC+Furnace scope
-        // RA14AY36AJ1NA (3T=$2,797) | RA14AY60AJ1NA (5T=$4,171)
-        prices: { 1: 0, 1.5: 0, 2: 0, 2.5: 0, 3: 2797, 3.5: 0, 4: 0, 5: 4171 },
-        models: {
-          3: { cond: 'RA14AY36AJ1NA', ah: 'R801T0503A14UHN', seer: '14.3 SEER2', ref: 'R-454B' },
-          5: { cond: 'RA14AY60AJ1NA', ah: '—',              seer: '14.3 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '15.2 SEER2 HP', equipType: 'hp',
-        // HP Two Stage + AH combined | RP15AZ48AJ2NA (4T HP $4,123) + RH2TY4821STANNA (4T AH $2,048)
-        prices: { 1: 0, 1.5: 0, 2: 0, 2.5: 0, 3: 0, 3.5: 0, 4: 6171, 5: 0 },
-        models: {
-          4: { hp: 'RP15AZ48AJ2NA', ah: 'RH2TY4821STANNA', seer: '15.2 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '16 SEER2 Slim HP', equipType: 'hp',
-        // HP Slim Variable + AH combined where AH price is available
-        // RD16AY24AJVCA (2T HP $2,745) + RH2TY2417STANNA (2T AH $1,537) = $4,282
-        // RD16AY60AJVCA (5T HP $3,591) — 5T AH price not yet in list
-        prices: { 1: 0, 1.5: 0, 2: 4282, 2.5: 0, 3: 0, 3.5: 0, 4: 0, 5: 3591 },
-        models: {
-          2: { hp: 'RD16AY24AJVCA', ah: 'RH2TY2417STANNA', seer: '16 SEER2', ref: 'R-454B' },
-          5: { hp: 'RD16AY60AJVCA', ah: '—',               seer: '16 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '18 SEER2 Slim HP', equipType: 'hp',
-        // HP Slim Variable + AH combined where AH price is available
-        // RD18AY36AJVCA (3T HP $3,337) — 3T AH price not yet in list
-        // RD18AY48AJVCA (4T HP $3,941) + RH2TY4821STANNA (4T AH $2,048) = $5,989
-        // RD18AY60AJVCA (5T HP $4,148) — 5T AH price not yet in list
-        prices: { 1: 0, 1.5: 0, 2: 0, 2.5: 0, 3: 3337, 3.5: 0, 4: 5989, 5: 4148 },
-        models: {
-          3: { hp: 'RD18AY36AJVCA', ah: '—',               seer: '18 SEER2', ref: 'R-454B' },
-          4: { hp: 'RD18AY48AJVCA', ah: 'RH2TY4821STANNA', seer: '18 SEER2', ref: 'R-454B' },
-          5: { hp: 'RD18AY60AJVCA', ah: '—',               seer: '18 SEER2', ref: 'R-454B' },
-        }
-      },
-    ],
-    get prices() { const tier = this.seerTiers[getActiveSeerIdx(this)]; const isACF = typeof document !== 'undefined' && document.getElementById('systemType')?.value === 'Split System AC + Furnace'; return (isACF && tier.condOnlyPrices) ? tier.condOnlyPrices : tier.prices; },
-    get models() { return this.seerTiers[getActiveSeerIdx(this)].models; }
+    prices: buildPrices(8300)
   },
   Bosch: {
     brand: 'Bosch', tier: 'Premium', cls: 'tier-premium',
     badge: '#FFF3E8', badgeTxt: '#C2410C', totalClr: '#F97316',
     desc: 'Premium German engineering. Maximum comfort.',
-    perks: ['Inverter variable-speed tech', '10-yr mfr parts warranty', 'Ultra-quiet · R-454B'],
-    // Multi-SEER tiers: default = index 0 (lowest/cheapest)
-    seerTiers: [
-      {
-        label: '15 SEER2', equipType: 'hp',
-        // HP + AH combined: 2T=$3,500 | 3T=$3,995 | 4T=$4,598 | 5T=$5,317
-        prices: { 1: 0, 1.5: 0, 2: 3500, 2.5: 3748, 3: 3995, 3.5: 4297, 4: 4598, 5: 5317 },
-        models: {
-          2: { hp: 'BOVA-24RXB-M15S', ah: 'BIVA-24RXB-M15X', seer: '15 SEER2', ref: 'R-454B' },
-          3: { hp: 'BOVA-36RXB-M15S', ah: 'BIVA-36RXB-M15X', seer: '15 SEER2', ref: 'R-454B' },
-          4: { hp: '(interpolated)',   ah: 'BIVA-48RXB-M15X', seer: '15 SEER2', ref: 'R-454B' },
-          5: { hp: 'BOVA-60RXB-M15S', ah: 'BIVA-60RXB-M15X', seer: '15 SEER2', ref: 'R-454B' },
-        }
-      },
-      {
-        label: '20 SEER2 Wireless', equipType: 'hp',
-        // HP + AH combined: 3T=$6,487 | 5T=$8,947 (no 2T, 4T HP at 20 SEER2)
-        prices: { 1: 0, 1.5: 0, 2: 0, 2.5: 0, 3: 6487, 3.5: 0, 4: 0, 5: 8947 },
-        models: {
-          3: { hp: 'BOVA-36RTB-M20S', ah: 'BIVA36RCBM20X', seer: '20 SEER2', ref: 'R-454B' },
-          5: { hp: 'BOVA-60RTB-M20S', ah: 'BIVA60RCBM20X', seer: '20 SEER2', ref: 'R-454B' },
-        }
-      }
-    ],
-    // prices/models are dynamically resolved from seerTiers[selectedSEERIndex]
-    get prices() { const tier = this.seerTiers[getActiveSeerIdx(this)]; const isACF = typeof document !== 'undefined' && document.getElementById('systemType')?.value === 'Split System AC + Furnace'; return (isACF && tier.condOnlyPrices) ? tier.condOnlyPrices : tier.prices; },
-    get models() { return this.seerTiers[getActiveSeerIdx(this)].models; }
+    perks: ['Inverter variable-speed tech', '10-yr mfr parts warranty', 'Ultra-quiet operation'],
+    prices: buildPrices(9000)
   }
 };
 
 let selectedTier = null;
-
-// ─── Scope Labor Costs ───────────────────────────────
-const SCOPE_LABOR = {
-  'Full System Replacement':           4200,
-  'New System Installation':           8400,
-  'Furnace Replacement':               1750,
-  'Air Handler Replacement':           1750,
-  'Condenser Replacement':             1750,
-  'Heat Pump Replacement':             1750,
-  'Evaporator Coil Replacement':       1750,
-  'AC Addition Only':                  4200,
-  'AC Addition + Furnace Replacement': 6300,
-  'Other Installation':                0,
-};
-
-function getScopeLaborCost() {
-  const scope = document.getElementById('scopeWork').value || '';
-  return SCOPE_LABOR[scope] || 0;
-}
-
-// ─── Equipment Cost: +10% tax, +5% markup ─────────────
-function equipCost(rawPrice) {
-  if (!rawPrice) return 0;
-  return Math.round(rawPrice * 1.10 * 1.05);
-}
-
-function getLocationSurcharge() {
-  const loc = (document.getElementById('ahLocation').value || '').toLowerCase();
-  return (loc === 'attic' || loc === 'crawl space') ? 600 : 0;
-}
-
-function selectSEER(brand, idx) {
-  seerSelections[brand] = idx;
-  renderTierCards();
-  if (selectedTier) renderPrintEstimate();
-}
 
 function renderTierCards() {
   const size = state.selectedSize;
@@ -1644,59 +1257,21 @@ function renderTierCards() {
   const grid = document.getElementById('tierGrid');
   grid.innerHTML = '';
 
-  const locationSurcharge = getLocationSurcharge();
-  const scopeLabor = getScopeLaborCost();
-  const availableBrands = ['ACPro','Goodman','Rheem','Bosch'].filter(isBrandAvailable);
-  // Adjust grid columns based on how many brands are available
-  grid.style.gridTemplateColumns = availableBrands.length === 4 ? 'repeat(2,1fr)' : availableBrands.length === 3 ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
-  for (const key of availableBrands) {
+  for (const key of ['ACPro','Goodman','Rheem','Bosch']) {
     const t = TIER_PRICING[key];
-    const basePrice = size ? equipCost(t.prices[size]) : 0;
-    const furnaceCost = getFurnaceCost();
-    const subtotal = basePrice + furnaceCost + scopeLabor + addonTotal + locationSurcharge;
+    const basePrice = size ? (t.prices[size] || 0) : 0;
+    const subtotal = basePrice + addonTotal;
     const finalTotal = Math.max(0, subtotal - discountAmount);
     const isSelected = selectedTier === key;
-    const laborRow = scopeLabor > 0 ? `<div class="tier-price-row"><span class="tier-price-label">Base labor (${document.getElementById('scopeWork').value})</span><span class="tier-price-val">+$${scopeLabor.toLocaleString()}</span></div>` : '';
-    const furnaceRow = furnaceCost > 0 ? `<div class="tier-price-row"><span class="tier-price-label">Furnace (${state.selectedFurnace.model})</span><span class="tier-price-val">+$${furnaceCost.toLocaleString()}</span></div>` : '';
-    const surchargeRow = locationSurcharge > 0 ? `<div class="tier-price-row" style="color:#C2410C;"><span class="tier-price-label">Attic / crawl space access</span><span class="tier-price-val">+$${locationSurcharge.toLocaleString()}</span></div>` : '';
     const discRow = discountAmount > 0 && isSelected ? `<div class="tier-price-row" style="color:#E11D48;"><span class="tier-price-label">Discount</span><span class="tier-price-val">-$${discountAmount.toLocaleString()}</span></div>` : '';
-    const isACF = document.getElementById('systemType').value === 'Split System AC + Furnace';
-    const brandFurnaces = FURNACES.filter(f => f.brand === key);
-    const furnaceDropdown = isACF && brandFurnaces.length > 0 ? (() => {
-      const curId = state.selectedFurnace?.id || '';
-      const opts = brandFurnaces.map(f =>
-        `<option value="${f.id}"${f.id === curId ? ' selected' : ''}>${f.model}${f.note?' ('+f.note+')':''} · ${f.afue} · ${f.btu} BTU · $${equipCost(f.price).toLocaleString()}</option>`
-      ).join('');
-      return `<div style="margin:8px 0 4px;" onclick="event.stopPropagation()">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:0.4px;margin-bottom:4px;">🔥 FURNACE</div>
-        <select onchange="event.stopPropagation();selectFurnace(this.value)" style="width:100%;font-size:11px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:'DM Sans',sans-serif;cursor:pointer;">
-          <option value="">— Select furnace —</option>
-          ${opts}
-        </select>
-      </div>`;
-    })() : '';
     grid.innerHTML += `
     <div class="tier-card ${t.cls}${isSelected?' selected':''}" onclick="selectTier('${key}')">
       <div class="tier-select-check">${isSelected?'✓':''}</div>
       <div class="tier-badge" style="background:${t.badge};color:${t.badgeTxt};">${t.tier.toUpperCase()}</div>
       <div class="tier-brand">${t.brand}</div>
       <div class="tier-desc">${t.desc}</div>
-      ${t.seerTiers?`<div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
-        ${getValidSeerTiers(t).map((st)=>{
-          const i = t.seerTiers.indexOf(st);
-          const avail = size && st.prices[size] > 0;
-          const sel = getActiveSeerIdx(t) === i;
-          return `<button onclick="event.stopPropagation();selectSEER('${t.brand}',${i})" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1.5px solid ${sel?'var(--purple)':avail?'var(--border)':'#e2e8f0'};background:${sel?'var(--purple-pale)':'white'};color:${sel?'var(--purple)':avail?'var(--slate)':'#94A3B8'};cursor:${avail?'pointer':'not-allowed'};font-family:system-ui;font-weight:${sel?'600':'400'};" ${!avail&&!sel?'disabled':''}>
-            ${st.label}${!avail&&size?' (N/A)':''}
-          </button>`;
-        }).join('')}
-      </div>`:''}
-      <div class="tier-price-row"><span class="tier-price-label">Equipment (${size||'—'} ton)</span><span class="tier-price-val">${basePrice?'$'+basePrice.toLocaleString():basePrice===0&&size?'N/A':'—'}</span></div>
-      ${t.models&&t.models[size]?`<div style="font-size:9px;color:var(--muted);padding:2px 0 4px;">${t.models[size].hp?"HP: "+t.models[size].hp:"Cond: "+t.models[size].cond}${document.getElementById('systemType').value!=='Split System AC + Furnace'?" / AH: "+t.models[size].ah:""}<br>${t.models[size].seer} / ${t.models[size].ref}</div>`:''}\ 
-      ${furnaceDropdown}
-      ${furnaceRow}
+      <div class="tier-price-row"><span class="tier-price-label">System (${size||'—'} ton)</span><span class="tier-price-val">${basePrice?'$'+basePrice.toLocaleString():'—'}</span></div>
       ${addonTotal>0?`<div class="tier-price-row"><span class="tier-price-label">Add-ons</span><span class="tier-price-val">+$${addonTotal.toLocaleString()}</span></div>`:''}
-      ${surchargeRow}
       ${discRow}
       <div class="tier-total">
         <div class="tier-total-label">TOTAL ESTIMATE</div>
@@ -1720,13 +1295,10 @@ function renderPrintEstimate() {
   if (!selectedTier) return;
   const t = TIER_PRICING[selectedTier];
   const size = state.selectedSize;
-  const basePrice = size ? equipCost(t.prices[size]) : 0;
+  const basePrice = size ? (t.prices[size] || 0) : 0;
   const addons = ADDONS.filter(a => document.getElementById('chk-' + a.id).checked);
   const addonTotal = addons.reduce((s, a) => s + a.price, 0);
-  const locationSurcharge = getLocationSurcharge();
-  const scopeLabor = getScopeLaborCost();
-  const furnaceCost = getFurnaceCost();
-  const grandTotal = Math.max(0, basePrice + furnaceCost + scopeLabor + addonTotal + locationSurcharge - discountAmount);
+  const grandTotal = Math.max(0, basePrice + addonTotal - discountAmount);
 
   const fn = document.getElementById('firstName').value;
   const ln = document.getElementById('lastName').value;
@@ -1786,6 +1358,7 @@ function renderPrintEstimate() {
     <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin:16px 0 6px;">SCOPE OF WORK</div>
     <div class="print-line"><span class="print-line-label">System type</span><span class="print-line-val">${document.getElementById('systemType').value}</span></div>
     <div class="print-line"><span class="print-line-label">Scope</span><span class="print-line-val">${document.getElementById('scopeWork').value}</span></div>
+    <div class="print-line"><span class="print-line-label">Refrigerant</span><span class="print-line-val">${document.getElementById('refrigerant').value}</span></div>
 
     <div style="margin-top:10px;">
     <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -1847,12 +1420,8 @@ function renderPrintEstimate() {
     </div>
 
     <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin:16px 0 8px;">PRICING</div>
-    <div class="print-line"><span class="print-line-label">${t.brand} ${size||'—'}-ton system (equipment)</span><span class="print-line-val">$${basePrice.toLocaleString()}</span></div>
-    ${t.models&&t.models[size]?`<div style="font-size:11px;color:var(--muted);padding:2px 0 6px;line-height:1.5;">${t.models[size].hp?"Heat Pump: "+t.models[size].hp:"Condenser: "+t.models[size].cond}${document.getElementById('systemType').value!=='Split System AC + Furnace'?" / AH: "+t.models[size].ah:""}<br>${t.models[size].seer} / ${t.models[size].ref}</div>`:''}\ 
-    ${furnaceCost>0?`<div class="print-line"><span class="print-line-label">Furnace — ${state.selectedFurnace.brand} ${state.selectedFurnace.model} (${state.selectedFurnace.afue} AFUE · ${state.selectedFurnace.btu} BTU)</span><span class="print-line-val">+$${furnaceCost.toLocaleString()}</span></div>`:''}
-    ${scopeLabor>0?`<div class="print-line"><span class="print-line-label">Base labor (${document.getElementById('scopeWork').value})</span><span class="print-line-val">+$${scopeLabor.toLocaleString()}</span></div>`:''}
+    <div class="print-line"><span class="print-line-label">${t.brand} ${size||'—'}-ton system (installed)</span><span class="print-line-val">$${basePrice.toLocaleString()}</span></div>
     ${addonLines}
-    ${locationSurcharge>0?`<div class="print-line" style="color:#C2410C;font-weight:600;"><span class="print-line-label">Attic / crawl space access surcharge</span><span class="print-line-val">+$${locationSurcharge.toLocaleString()}</span></div>`:''}
     ${discountAmount>0?`<div class="print-line" style="color:#E11D48;"><span class="print-line-label">Discount applied</span><span class="print-line-val">-$${discountAmount.toLocaleString()}</span></div>`:''}
 
     ${notes?`<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--muted)"><strong style="color:var(--slate)">Notes:</strong> ${notes}</div>`:''}
@@ -1956,7 +1525,6 @@ function buildSummary() {
   // Reset tier selection on each visit to step 5
   selectedTier = null;
   discountAmount = 0;
-  seerSelections = {};
   document.getElementById('printEstimate').style.display = 'none';
   document.getElementById('printBtn').style.display = 'none';
   document.getElementById('discountCard').style.display = 'none';
@@ -1977,7 +1545,6 @@ function newEstimate() {
   document.getElementById('overrideToggle').classList.remove('on');
   document.getElementById('addonTotal').textContent = '$0';
   discountAmount = 0;
-  seerSelections = {};
   document.getElementById('discountType').selectedIndex = 0;
   document.getElementById('discountValue').value = '';
   document.getElementById('discountCard').style.display = 'none';
@@ -1994,7 +1561,7 @@ function downloadPDF() {
   if (!selectedTier) return;
   const t = TIER_PRICING[selectedTier];
   const size = state.selectedSize;
-  const basePrice = size ? equipCost(t.prices[size]) : 0;
+  const basePrice = size ? (t.prices[size] || 0) : 0;
   const addons = ADDONS.filter(a => document.getElementById('chk-' + a.id).checked);
   const addonTotal = addons.reduce((s,a) => s + a.price, 0);
   const grandTotal = basePrice + addonTotal;
@@ -2050,6 +1617,7 @@ function downloadPDF() {
   var ahLoc  = document.getElementById('ahLocation').value || '—';
   var sysType = document.getElementById('systemType').value;
   var scope  = document.getElementById('scopeWork').value;
+  var refrig = document.getElementById('refrigerant').value;
 
 
     // Scope of work for PDF
@@ -2065,15 +1633,6 @@ function downloadPDF() {
     '<tr><td style="vertical-align:top;padding:5px 6px 5px 0;width:18px;"><div style="width:8px;height:8px;background:#5048BC;border-radius:50%;margin-top:3px;"></div></td><td style="padding:5px 0;"><div style="font-size:10px;font-weight:700;color:#0F172A;">Job Site Cleanup</div><div style="font-size:9.5px;color:#64748B;line-height:1.55;margin-top:2px;">Maintain a clean and safe work environment throughout the project. Upon completion, remove all debris, packaging, and old equipment, leaving the work area in clean condition.</div></td></tr>' +
     '<tr><td style="vertical-align:top;padding:5px 6px 5px 0;width:18px;"><div style="width:8px;height:8px;background:#5048BC;border-radius:50%;margin-top:3px;"></div></td><td style="padding:5px 0;"><div style="font-size:10px;font-weight:700;color:#0F172A;">Owner Orientation and Documentation</div><div style="font-size:9.5px;color:#64748B;line-height:1.55;margin-top:2px;">Provide a complete walkthrough of the new system, including operation, maintenance requirements, and thermostat use. Deliver all relevant manuals, warranty information, and documentation to the owner.</div></td></tr>' +
       '</table></div>';
-
-  var scopeLabor = getScopeLaborCost();
-  var grandTotalPDF = Math.max(0, basePrice + scopeLabor + addonTotal + locationSurcharge - discountAmount);
-  var laborRowPDF = scopeLabor > 0
-    ? '<tr><td style="padding:5px 0;font-size:11px;font-weight:500;color:#0F172A;">Base labor (' + (document.getElementById('scopeWork').value) + ')</td><td style="padding:5px 0;text-align:right;font-size:11px;font-weight:600;color:#0F172A;">+$' + scopeLabor.toLocaleString() + '</td></tr>'
-    : '';
-  var surchargeRowPDF = locationSurcharge > 0
-    ? '<tr><td style="padding:4px 0;font-size:11px;font-weight:600;color:#C2410C;">Attic / crawl space access surcharge</td><td style="padding:4px 0;text-align:right;font-size:11px;font-weight:700;color:#C2410C;">+$' + locationSurcharge.toLocaleString() + '</td></tr>'
-    : '';
 
   var doc = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">' +
     '<title>Airist HVAC Estimate</title>' +
@@ -2139,6 +1698,7 @@ function downloadPDF() {
     '<table>' +
     '<tr><td style="font-size:10px;color:#64748B;padding:2px 0;width:40%">System type</td><td style="font-size:10px;font-weight:600;color:#0F172A;">' + sysType + '</td></tr>' +
     '<tr><td style="font-size:10px;color:#64748B;padding:2px 0;">Scope</td><td style="font-size:10px;font-weight:600;color:#0F172A;">' + scope + '</td></tr>' +
+    '<tr><td style="font-size:10px;color:#64748B;padding:2px 0;">Refrigerant</td><td style="font-size:10px;font-weight:600;color:#0F172A;">' + refrig + '</td></tr>' +
     '</table></td></tr></table>' +
 
     // ── Pricing ──
@@ -2147,13 +1707,11 @@ function downloadPDF() {
     '<div style="border-top:1px solid #E2E8F0;padding-top:12px;margin-bottom:4px;">' +
     '<div style="font-size:9px;font-weight:700;color:#64748B;letter-spacing:0.5px;margin-bottom:8px;">PRICING BREAKDOWN</div>' +
     '<table>' +
-    '<tr style="border-bottom:1px solid #F1F5F9;"><td style="padding:5px 0;font-size:11px;font-weight:600;color:#0F172A;">' + t.brand + ' ' + (size||'—') + '-ton system (equipment)' + (t.models&&t.models[size]?'<div style="font-size:9px;color:#64748B;margin-top:2px;">'+(t.models[size].hp?'HP: '+t.models[size].hp:'Cond: '+t.models[size].cond)+(document.getElementById('systemType').value!=='Split System AC + Furnace'?' / AH: '+t.models[size].ah:'')+'<br>'+t.models[size].seer+' / '+t.models[size].ref+'</div>':'') + '</td>' +
+    '<tr style="border-bottom:1px solid #F1F5F9;"><td style="padding:5px 0;font-size:11px;font-weight:600;color:#0F172A;">' + t.brand + ' ' + (size||'—') + '-ton system (installed)</td>' +
     '<td style="padding:5px 0;text-align:right;font-size:11px;font-weight:700;color:#0F172A;">$' + basePrice.toLocaleString() + '</td></tr>' +
     '<tr><td style="padding:4px 0;font-size:10px;color:#16A34A;">&#10003; 10-Year Airist Labor Warranty (included)</td><td style="padding:4px 0;text-align:right;font-size:10px;color:#16A34A;font-weight:600;">$0</td></tr>' +
     '<tr><td style="padding:4px 0;font-size:10px;color:#16A34A;">&#10003; 10-Year Manufacturer Parts Warranty (included)</td><td style="padding:4px 0;text-align:right;font-size:10px;color:#16A34A;font-weight:600;">$0</td></tr>' +
-    laborRowPDF +
     addonRows +
-    surchargeRowPDF +
     '</table></div>' +
 
     notesBlock +
@@ -2196,7 +1754,7 @@ function applyDiscount() {
   if (!selectedTier) return;
   const t = TIER_PRICING[selectedTier];
   const size = state.selectedSize;
-  const basePrice = size ? equipCost(t.prices[size]) : 0;
+  const basePrice = size ? (t.prices[size] || 0) : 0;
   const addons = ADDONS.filter(a => document.getElementById('chk-' + a.id).checked);
   const addonTotal = addons.reduce((s,a) => s + a.price, 0);
   const subtotal = basePrice + addonTotal;
